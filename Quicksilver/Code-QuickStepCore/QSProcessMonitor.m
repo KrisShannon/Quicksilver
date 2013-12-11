@@ -59,6 +59,10 @@ OSStatus appChanged(EventHandlerCallRef nextHandler, EventRef theEvent, void *us
     if( result == noErr ) {
         NSDictionary *dict = [(__bridge QSProcessMonitor*)userData infoForPSN:psn];
         [[NSNotificationCenter defaultCenter] postNotificationName:QSProcessMonitorFrontApplicationSwitched object:(__bridge id)userData userInfo:dict];
+        // update the process monitor state
+        QSProcessMonitor *pm = [QSProcessMonitor sharedInstance];
+        pm.previousApplication = pm.currentApplication;
+        pm.currentApplication = [[NSWorkspace sharedWorkspace] activeApplication];
     } else {
         NSLog(@"Unable to get event parameter kEventParamProcessID");
     }
@@ -145,7 +149,6 @@ OSStatus appTerminated(EventHandlerCallRef nextHandler, EventRef theEvent, void 
 		isReloading = NO;
 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appTerminated:) name:QSProcessMonitorApplicationTerminated object: nil];
 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appLaunched:) name:QSProcessMonitorApplicationLaunched object: nil];
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appChanged:) name:QSProcessMonitorFrontApplicationSwitched object: nil];
 
 		EventTypeSpec eventType;
 		EventHandlerUPP handlerFunction;
@@ -186,8 +189,8 @@ OSStatus appTerminated(EventHandlerCallRef nextHandler, EventRef theEvent, void 
     err = RemoveEventHandler(terminateHandler);
     if(err)
         NSLog(@"error %ld removing terminate handler", (long)err);
-	currentApplication = nil;
-	previousApplication = nil;
+	_currentApplication = nil;
+	_previousApplication = nil;
 	processes = nil;
 }
 
@@ -360,21 +363,6 @@ OSStatus appTerminated(EventHandlerCallRef nextHandler, EventRef theEvent, void 
 	[self removeProcessWithPSN:psn];
 }
 
-- (void)appChanged:(NSNotification *)aNotification {
-	/* TODO: tiennou This doesn't belong here */
-	NSWorkspace *workspace = [NSWorkspace sharedWorkspace];
-	NSDictionary *newApp = [workspace activeApplication];
-	if ([[NSUserDefaults standardUserDefaults] boolForKey:@"Hide Other Apps When Switching"]) {
-		if (!(GetCurrentKeyModifiers() & shiftKey) ) {
-			//if (VERBOSE) NSLog(@"Hide Other Apps");
-			[workspace hideOtherApplications:[NSArray arrayWithObject:newApp]];
-		}
-	}
-
-	[self setPreviousApplication:currentApplication];
-	[self setCurrentApplication:newApp];
-}
-
 #pragma mark -
 #pragma mark Utilities
 
@@ -423,7 +411,7 @@ OSStatus appTerminated(EventHandlerCallRef nextHandler, EventRef theEvent, void 
 		//	NSLog(@"return");
 		return [self imbuedFileProcessForDict:[[NSWorkspace sharedWorkspace] activeApplication]];
 	} else if ([[proxy identifier] isEqualToString:@"QSPreviousApplicationProxy"]) {
-		return [self imbuedFileProcessForDict:previousApplication];
+		return [self imbuedFileProcessForDict:_previousApplication];
 	}
 	return nil;
 }
@@ -466,25 +454,4 @@ OSStatus appTerminated(EventHandlerCallRef nextHandler, EventRef theEvent, void 
 - (NSArray *)backgroundProcesses {
 	return [self processesWithHiddenState:YES];
 }
-
-- (NSDictionary *)currentApplication {
-	return currentApplication;
-}
-
-- (void)setCurrentApplication:(NSDictionary *)newCurrentApplication {
-	if (currentApplication != newCurrentApplication) {
-		currentApplication = [newCurrentApplication copy];
-	}
-}
-
-- (NSDictionary *)previousApplication {
-	return previousApplication;
-}
-
-- (void)setPreviousApplication:(NSDictionary *)newPreviousApplication {
-	if (previousApplication != newPreviousApplication) {
-		previousApplication = [newPreviousApplication copy];
-	}
-}
-
 @end

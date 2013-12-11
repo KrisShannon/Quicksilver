@@ -600,7 +600,18 @@ static QSController *defaultController = nil;
 }
 
 - (void)appChanged:(NSNotification *)aNotification {
+    // forget modifiers used to switch applications
     [QSModifierKeyEvent resetModifierState];
+    
+    // hide other applications?
+    if ([[NSUserDefaults standardUserDefaults] boolForKey:@"Hide Other Apps When Switching"]) {
+        if (!(GetCurrentKeyModifiers() & shiftKey) ) {
+            //if (VERBOSE) NSLog(@"Hide Other Apps");
+            NSWorkspace *workspace = [NSWorkspace sharedWorkspace];
+            NSDictionary *newApp = [workspace activeApplication];
+            [workspace hideOtherApplications:[NSArray arrayWithObject:newApp]];
+        }
+    }
 }
 
 - (IBAction)rescanItems:sender { [QSLib startThreadedScan];  }

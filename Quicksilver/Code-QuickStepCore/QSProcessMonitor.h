@@ -8,13 +8,15 @@
 
 @interface QSProcessMonitor : NSObject <QSProxyObjectProvider> {
 	NSMutableDictionary *processes;
-	NSDictionary *currentApplication;
-	NSDictionary *previousApplication;
     EventHandlerRef changeHandler;
 	EventHandlerRef launchHandler;
 	EventHandlerRef terminateHandler;
 	BOOL isReloading;
 }
+
+@property (copy) NSDictionary *currentApplication;
+@property (copy) NSDictionary *previousApplication;
+
 + (id)sharedInstance;
 + (NSArray *)processes; /* NDProcesses */
 
@@ -30,9 +32,6 @@
 - (QSObject *)processObjectWithPSN:(ProcessSerialNumber)psn;
 
 - (BOOL)handleProcessEvent:(NSEvent *)theEvent;
-
-- (NSDictionary *)currentApplication;
-- (NSDictionary *)previousApplication;
 @end
 
 /* QSProcessMonitor notifications */
